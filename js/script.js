@@ -342,4 +342,24 @@ aspectSel.addEventListener('change',applyFilter);
 // Iniciar
 boot();
 
-//v1
+// Lazy loading avanzado
+function lazyLoad(img, url) {
+  if (!('IntersectionObserver' in window)) {
+    // Fallback si el navegador es viejo
+    img.src = url;
+    return;
+  }
+  const observer = new IntersectionObserver((entries, obs) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        img.src = url;
+        obs.unobserve(entry.target);
+      }
+    });
+  }, { rootMargin: "200px" }); // empieza a cargar 200px antes de aparecer
+  observer.observe(img);
+}
+
+
+
+//v1.2
