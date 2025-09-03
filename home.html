@@ -45,20 +45,20 @@
   <div id="grid" class="grid"></div>
   <p id="empty" class="empty" hidden>Sin resultados.</p>
 
-  <!-- Vista de DETALLE (nueva) -->
-  <section id="detailView" hidden>
-    <button id="backBtn" class="back">← Volver</button>
-    <div id="detailHead" class="detail-head">
-      <div id="detailImgWrap"><img id="detailSprite" class="sprite" alt="" loading="lazy"></div>
-      <div>
-        <h2 id="detailTitle" class="name"></h2>
-        <div id="detailTypes"></div>
-        <div id="detailMeta" class="dex"></div>
-        <div id="detailCP" class="cp-max-100-l20"></div>
-      </div>
+<!-- Vista de DETALLE (queda oculta hasta que hagas click en una card) -->
+<section id="detailView" hidden>
+  <button id="backBtn" class="back">← Volver</button>
+  <div class="detail-head">
+    <div id="detailImgWrap"><img id="detailSprite" class="sprite" alt="" loading="lazy"></div>
+    <div>
+      <h2 id="detailTitle" class="name"></h2>
+      <div id="detailTypes"></div>
+      <div id="detailMeta" class="dex"></div>
+      <div id="detailCP" class="cp-max-100-l20"></div>
     </div>
-    <div id="detailStats"></div>
-  </section>
+  </div>
+  <div id="detailStats"></div>
+</section>
 </main>
 
 <!-- JS único -->
