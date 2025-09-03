@@ -1,11 +1,17 @@
-/* =================== RUTAS DE IMÁGENES (Pokemapi) =================== */
+/* =========================
+   Pokédex — JS ÚNICO
+   (Oculta el grid y muestra el detalle al hacer click)
+   ========================= */
+
+/* ====== Rutas de imágenes (Pokemapi) ====== */
 const BASE_NORMAL     = "https://pokemongo-get.com/wp-content/themes/simplicity2-child/images/pokemongo";
 const BASE_SHINY      = "https://pokemongo-get.com/wp-content/themes/simplicity2-child/images/pokemongo_shiny";
 const BASE_MEGA       = "https://pokemongo-get.com/wp-content/themes/simplicity2-child/images/pokemongo_form/3d";
 const BASE_MEGA_SHINY = "https://pokemongo-get.com/wp-content/themes/simplicity2-child/images/pokemongo_form/shiny";
 
-/* =================== VARIANTES A CLONAR (igual que antes) =================== */
+/* ====== Variantes especiales (mega/gigamax/primal) ====== */
 const FORM_VARIANTS = {
+  /* Kanto */
   3:[{suffix:"mega",display:"Mega Venusaur"},{suffix:"gigamax",display:"Gigamax Venusaur"}],
   6:[{suffix:"mega-x",display:"Mega Charizard X"},{suffix:"mega-y",display:"Mega Charizard Y"},{suffix:"gigamax",display:"Gigamax Charizard"}],
   9:[{suffix:"mega",display:"Mega Blastoise"},{suffix:"gigamax",display:"Gigamax Blastoise"}],
@@ -27,12 +33,14 @@ const FORM_VARIANTS = {
   142:[{suffix:"mega",display:"Mega Aerodactyl"}],
   143:[{suffix:"gigamax",display:"Gigamax Snorlax"}],
   150:[{suffix:"mega-x",display:"Mega Mewtwo X"},{suffix:"mega-y",display:"Mega Mewtwo Y"}],
+  /* Johto */
   181:[{suffix:"mega",display:"Mega Ampharos"}],
   208:[{suffix:"mega",display:"Mega Steelix"}],
   212:[{suffix:"mega",display:"Mega Scizor"}],
   214:[{suffix:"mega",display:"Mega Heracross"}],
   229:[{suffix:"mega",display:"Mega Houndoom"}],
   248:[{suffix:"mega",display:"Mega Tyranitar"}],
+  /* Hoenn */
   254:[{suffix:"mega",display:"Mega Sceptile"}],
   257:[{suffix:"mega",display:"Mega Blaziken"}],
   260:[{suffix:"mega",display:"Mega Swampert"}],
@@ -50,16 +58,21 @@ const FORM_VARIANTS = {
   362:[{suffix:"mega",display:"Mega Glalie"}],
   373:[{suffix:"mega",display:"Mega Salamence"}],
   376:[{suffix:"mega",display:"Mega Metagross"}],
+  /* Sinnoh */
   428:[{suffix:"mega",display:"Mega Lopunny"}],
   445:[{suffix:"mega",display:"Mega Garchomp"}],
   448:[{suffix:"mega",display:"Mega Lucario"}],
   460:[{suffix:"mega",display:"Mega Abomasnow"}],
   475:[{suffix:"mega",display:"Mega Gallade"}],
+  /* Unova */
   531:[{suffix:"mega",display:"Mega Audino"}],
+  /* Kalos */
   719:[{suffix:"mega",display:"Mega Diancie"}],
+  /* Primal / Rayquaza */
   382:[{suffix:"primal",display:"Primal Kyogre"}],
   383:[{suffix:"primal",display:"Primal Groudon"}],
   384:[{suffix:"mega",display:"Mega Rayquaza"}],
+  /* Gigamax */
   569:[{suffix:"gigamax",display:"Gigamax Garbodor"}],
   809:[{suffix:"gigamax",display:"Gigamax Melmetal"}],
   812:[{suffix:"gigamax",display:"Gigamax Rillaboom"}],
@@ -84,13 +97,55 @@ const FORM_VARIANTS = {
   ]
 };
 
-/* =================== HELPERS =================== */
-function capitalize(s){return s.charAt(0).toUpperCase()+s.slice(1)}
-function typePill(t){const span=document.createElement('span');span.className='pill';span.textContent=t;return span;}
-function statRow(name,value){const row=document.createElement('div');row.className='statrow';const l=document.createElement('div');l.textContent=name;const v=document.createElement('div');const bar=document.createElement('div');bar.className='bar';const i=document.createElement('i');i.style.width=Math.min(100,(value/255)*100)+'%';bar.appendChild(i);v.appendChild(bar);row.appendChild(l);row.appendChild(v);return row;}
-function normalizeTerm(t){return t.trim().toLowerCase().replace(/^#/, '');}
+/* ====== DOM refs ====== */
+const grid        = document.getElementById('grid');
+const empty       = document.getElementById('empty');
+const controls    = document.querySelector('.controls');
 
-/* =================== SPRITES (Pokemapi) =================== */
+const q           = document.getElementById('q');
+const limitSel    = document.getElementById('limit');
+const reloadBtn   = document.getElementById('reload');
+const formSel     = document.getElementById('formFilter');
+const aspectSel   = document.getElementById('aspectFilter');
+
+/* Detalle */
+const detailView    = document.getElementById('detailView');
+const backBtn       = document.getElementById('backBtn');
+const detailTitle   = document.getElementById('detailTitle');
+const detailImgWrap = document.getElementById('detailImgWrap');
+const detailSprite  = document.getElementById('detailSprite');
+const detailTypes   = document.getElementById('detailTypes');
+const detailMeta    = document.getElementById('detailMeta');
+const detailStats   = document.getElementById('detailStats');
+const detailCP      = document.getElementById('detailCP');
+
+/* ====== Estado ====== */
+let all = [];
+let statsMap = new Map();       // POGO base stats por id
+window.statsMap = statsMap;     // (opcional) accesible global
+
+/* ====== Helpers UI ====== */
+function capitalize(s){return s.charAt(0).toUpperCase()+s.slice(1)}
+function normalizeTerm(t){return t.trim().toLowerCase().replace(/^#/, '');}
+function typePill(t){const el=document.createElement('span');el.className='pill';el.textContent=t;return el;}
+function statRow(name,value){const row=document.createElement('div');row.className='statrow';const l=document.createElement('div');l.textContent=name;const v=document.createElement('div');const bar=document.createElement('div');bar.className='bar';const i=document.createElement('i');i.style.width=Math.min(100,(value/255)*100)+'%';bar.appendChild(i);v.appendChild(bar);row.appendChild(l);row.appendChild(v);return row;}
+
+/* ====== LazyLoad (IntersectionObserver) ====== */
+function lazyLoad(img, url) {
+  if (!url) return;
+  if (!('IntersectionObserver' in window)) { img.src = url; return; }
+  const io = new IntersectionObserver((entries, obs)=>{
+    entries.forEach(e=>{
+      if (e.isIntersecting) {
+        img.src = url;
+        obs.unobserve(e.target);
+      }
+    });
+  }, { rootMargin: '200px' });
+  io.observe(img);
+}
+
+/* ====== Sprites (Pokemapi) ====== */
 function gigamaxSuffix(id, form){
   if (form === 'gigamax-single') return '-1';
   if (form === 'gigamax-rapid')  return '-2';
@@ -130,7 +185,7 @@ function resolveSpriteURL(id, form){
   });
 }
 
-/* =================== DATA (PokeAPI) =================== */
+/* ====== Data (PokeAPI) ====== */
 async function fetchList(limit){
   const res = await fetch(`https://pokeapi.co/api/v2/pokemon?limit=${limit}&offset=0`);
   const data = await res.json();
@@ -142,8 +197,11 @@ async function fetchList(limit){
 
   const all = [];
   for (const p of base){
+    // Base normal + shiny
     all.push(p);
     all.push({ ...p, idVirtual: `${p.id}-s`, displayName: `${p.displayName} Shiny`, form:"shiny" });
+
+    // Variantes y sus shiny
     const variants = FORM_VARIANTS[p.id] || [];
     variants.forEach((v, i) => {
       all.push({ ...p, idVirtual: `${p.id}-v${i+1}`,   displayName: v.display,            form: v.suffix });
@@ -152,6 +210,7 @@ async function fetchList(limit){
   }
   return all;
 }
+
 async function fetchOne(id){
   const res = await fetch(`https://pokeapi.co/api/v2/pokemon/${id}`);
   const p = await res.json();
@@ -165,7 +224,7 @@ async function fetchOne(id){
   };
 }
 
-/* =================== CP Máx (nivel 20) =================== */
+/* ====== CP Máx L20 (POGO) ====== */
 const POGO_STATS_URL = 'https://pogoapi.net/api/v1/pokemon_stats.json';
 const CPM_LEVEL_20 = 0.5974;
 function computeCPMaxLevel20(a,d,s){
@@ -174,137 +233,176 @@ function computeCPMaxLevel20(a,d,s){
 }
 async function getStatsMap(){
   try{
-    const res = await fetch(POGO_STATS_URL, { cache:'no-store' });
+    const res=await fetch(POGO_STATS_URL,{cache:'no-store'});
     if(!res.ok) return new Map();
-    const rows = await res.json();
+    const rows=await res.json();
     return new Map(rows.map(r=>[+r.pokemon_id,{attack:+r.base_attack,defense:+r.base_defense,stamina:+r.base_stamina}]));
-  }catch(e){ return new Map(); }
+  }catch(e){
+    return new Map();
+  }
 }
 
-/* =================== UI (refs) =================== */
-const grid      = document.getElementById('grid');
-const empty     = document.getElementById('empty');
-const q         = document.getElementById('q');
-const limitSel  = document.getElementById('limit');
-const reloadBtn = document.getElementById('reload');
-const formSel   = document.getElementById('formFilter');
-const aspectSel = document.getElementById('aspectFilter');
-
-const detailView   = document.getElementById('detailView');
-const backBtn      = document.getElementById('backBtn');
-const detailTitle  = document.getElementById('detailTitle');
-const detailImgWrap= document.getElementById('detailImgWrap');
-const detailSprite = document.getElementById('detailSprite');
-const detailTypes  = document.getElementById('detailTypes');
-const detailMeta   = document.getElementById('detailMeta');
-const detailStats  = document.getElementById('detailStats');
-const detailCP     = document.getElementById('detailCP');
-
-let all=[], statsMap=new Map();
-
-/* =================== RENDER LISTA =================== */
+/* ====== Filtros ====== */
 function isShinyForm(form){ return form.includes('shiny'); }
 function isFormKind(p, kind){
   if(kind==='all') return true;
   if(kind==='normal')  return p.form==='normal' || p.form==='shiny';
-  return p.form.startsWith(kind);
+  return p.form.startsWith(kind); // mega | gigamax | primal
 }
+
+/* ====== Cards ====== */
 function buildCard(p){
-  const div=document.createElement('div');div.className='card';div.setAttribute('data-id', String(p.id));
+  const card=document.createElement('div');
+  card.className='card';
+  card.setAttribute('data-id', String(p.id));
+
   const imgWrap=document.createElement('div');
   if(p.form.includes("shiny")) imgWrap.classList.add('shiny-wrapper');
-  const img=document.createElement('img');img.className='sprite';img.alt=p.displayName;img.loading='lazy';
-  resolveSpriteURL(p.id,p.form).then(url=>{ if(url) img.src=url; });
+
+  const img=document.createElement('img');
+  img.className='sprite';
+  img.alt=p.displayName;
+  img.loading='lazy';
+
+  resolveSpriteURL(p.id,p.form).then(url => lazyLoad(img, url));
   imgWrap.appendChild(img);
+  card.appendChild(imgWrap);
+
   const dex=document.createElement('div');dex.className='dex';dex.textContent='#'+String(p.id).padStart(4,'0');
   const name=document.createElement('div');name.className='name';name.textContent=p.displayName;
+  card.appendChild(dex); card.appendChild(name);
 
-  div.appendChild(imgWrap); div.appendChild(dex); div.appendChild(name);
+  // CP Máx en la card (si ya tenemos stats)
+  const st = statsMap.get(p.id);
+  if (st){
+    const pcp=document.createElement('p');
+    pcp.className='cp-max-100-l20';
+    pcp.style.margin='0 0 6px';
+    pcp.style.fontSize='13px';
+    pcp.style.fontWeight='700';
+    pcp.style.textAlign='center';
+    pcp.textContent = 'Máx PC ' + computeCPMaxLevel20(st.attack, st.defense, st.stamina);
+    card.insertBefore(pcp, card.firstChild);
+  }
 
-  // En lugar de modal -> vista de detalle
-  div.addEventListener('click',()=>{
+  // Click -> abrir detalle y ocultar todo el grid
+  card.addEventListener('click', ()=>{
     openDetail({ id:p.id, form:p.form });
   });
-  return div;
+
+  return card;
 }
+
+/* Anotar CP en cards ya renderizadas cuando llega statsMap */
+function annotateCardsCP(){
+  if (!statsMap.size) return;
+  grid.querySelectorAll('.card').forEach(card=>{
+    if (card.querySelector('.cp-max-100-l20')) return;
+    const dexEl = card.querySelector('.dex');
+    const m = dexEl?.textContent.match(/#0*(\d+)/);
+    const id = m ? +m[1] : null;
+    if (!id) return;
+    const st = statsMap.get(id); if(!st) return;
+    const pcp=document.createElement('p');
+    pcp.className='cp-max-100-l20';
+    pcp.style.margin='0 0 6px';
+    pcp.style.fontSize='13px';
+    pcp.style.fontWeight='700';
+    pcp.style.textAlign='center';
+    pcp.textContent = 'Máx PC ' + computeCPMaxLevel20(st.attack, st.defense, st.stamina);
+    card.insertBefore(pcp, card.firstChild);
+  });
+}
+
+/* ====== Render ====== */
 function render(list){
   grid.innerHTML='';
-  if(!list.length){empty.hidden=false;return;}
+  if(!list.length){ empty.hidden=false; return; }
   empty.hidden=true;
-  for(const p of list){grid.appendChild(buildCard(p));}
+  const frag=document.createDocumentFragment();
+  for(const p of list){ frag.appendChild(buildCard(p)); }
+  grid.appendChild(frag);
+  // Si ya tenemos stats, anotar CP
+  annotateCardsCP();
 }
+
 function applyFilter(){
-  const term        = normalizeTerm(q.value);
-  const kind        = formSel.value;     // all/normal/mega/gigamax/primal
-  const aspect      = aspectSel.value;   // normal/shiny
+  const term        = normalizeTerm(q.value || '');
+  const kind        = formSel.value;   // all/normal/mega/gigamax/primal
+  const aspect      = aspectSel.value; // normal/shiny
+
   const filtered = all.filter(p=>{
     if(!isFormKind(p, kind)) return false;
     const shiny = isShinyForm(p.form);
     if(aspect==='normal' && shiny) return false;
     if(aspect==='shiny'  && !shiny) return false;
-    const match = !term ||
+
+    const matchesText =
+      !term ||
       String(p.id)===term ||
       (p.idVirtual && String(p.idVirtual).toLowerCase()===term) ||
       p.displayName.toLowerCase().includes(term) ||
       p.form.toLowerCase().includes(term);
-    return match;
+
+    return matchesText;
   });
+
   render(filtered);
 }
 
-/* =================== RENDER DETALLE =================== */
-async function openDetail({id, form='normal'}){
-  // UI: ocultar lista + controles, mostrar detalle
-  grid.hidden = true; empty.hidden = true;
-  document.querySelector('.controls')?.setAttribute('hidden','');
+/* ====== Vista de Detalle (pantalla completa dentro de la misma página) ====== */
+async function openDetail({ id, form='normal' }){
+  // Ocultar listado + controles, mostrar detalle
+  grid.hidden = true;
+  empty.hidden = true;
+  if (controls) controls.hidden = true;
   detailView.hidden = false;
+  document.body.classList.add('detail-mode'); // si tu CSS la usa para ocultar header
 
-  // Estado URL
-  const params = new URLSearchParams(location.search);
-  if (params.get('pokemon') !== String(id) || params.get('form') !== form){
-    const newParams = new URLSearchParams({ pokemon:String(id), form });
-    history.pushState({ view:'detail', id, form }, '', `?${newParams.toString()}`);
-  }
+  // Actualizar URL (para soportar Atrás)
+  const params = new URLSearchParams({ pokemon:String(id), form });
+  history.pushState({ view:'detail', id, form }, '', `?${params.toString()}`);
 
-  // Limpiar y pre-render
+  // Limpiar detalle
   detailTitle.textContent = 'Cargando…';
-  detailSprite.src = '';
+  detailSprite.removeAttribute('src');
+  detailImgWrap.classList.toggle('shiny-wrapper', form.includes('shiny'));
   detailTypes.innerHTML = '';
   detailMeta.textContent = '';
   detailStats.innerHTML = '';
   detailCP.textContent = '';
 
-  // Shiny estela
-  detailImgWrap.classList.toggle('shiny-wrapper', form.includes('shiny'));
-
   // Datos + sprite
   const data = await fetchOne(id);
   detailTitle.textContent = data.displayName;
-  resolveSpriteURL(id, form).then(url=>{ if(url) detailSprite.src=url; });
-  data.types.forEach(t=>detailTypes.appendChild(typePill(t)));
-  detailMeta.textContent = `Altura: ${data.height/10} m · Peso: ${data.weight/10} kg`;
-  data.stats.forEach(s=>detailStats.appendChild(statRow(s.name,s.base)));
 
-  // CP Máx nivel 20 (si tenemos stats)
+  resolveSpriteURL(id, form).then(url => lazyLoad(detailSprite, url));
+  data.types.forEach(t => detailTypes.appendChild(typePill(t)));
+  detailMeta.textContent = `Altura: ${data.height/10} m · Peso: ${data.weight/10} kg`;
+  data.stats.forEach(s => detailStats.appendChild(statRow(s.name, s.base)));
+
+  // CP Máx L20 si hay stats
   const st = statsMap.get(id);
   if (st){
     const cp = computeCPMaxLevel20(st.attack, st.defense, st.stamina);
     detailCP.textContent = 'Máx PC ' + cp;
   }
 }
+
 function showList(){
+  // Mostrar listado y controles; ocultar detalle
   detailView.hidden = true;
   grid.hidden = false;
-  document.querySelector('.controls')?.removeAttribute('hidden');
-  applyFilter();
-  // Sincronizar URL si quedamos en raíz
-  const params = new URLSearchParams(location.search);
-  if (params.has('pokemon')) {
+  if (controls) controls.hidden = false;
+  document.body.classList.remove('detail-mode');
+
+  // Limpiar parámetros de la URL
+  if (location.search.includes('pokemon=')) {
     history.pushState({ view:'list' }, '', location.pathname);
   }
 }
 
-/* =================== NAV / ROUTER =================== */
+/* ====== Router (URL) ====== */
 function routeFromURL(){
   const params = new URLSearchParams(location.search);
   const pid = params.get('pokemon');
@@ -316,50 +414,39 @@ function routeFromURL(){
   }
 }
 window.addEventListener('popstate', routeFromURL);
-backBtn.addEventListener('click', ()=>{
+
+/* ====== Boot ====== */
+async function boot(){
+  grid.innerHTML = '<p class="empty">Cargando…</p>';
+  const [list, smap] = await Promise.all([
+    fetchList(Number(limitSel.value)),
+    getStatsMap()
+  ]);
+  all = list;
+  statsMap = smap;
+  window.statsMap = statsMap; // actualizar global
+
+  // Si la URL ya pide un detalle, abrirlo; si no, listar y aplicar filtros
+  if (location.search.includes('pokemon=')) {
+    routeFromURL();
+  } else {
+    applyFilter(); // render inicial con filtros actuales (búsqueda, formas, aspecto)
+  }
+}
+
+/* ====== Eventos ====== */
+q.addEventListener('input', applyFilter);
+formSel.addEventListener('change', applyFilter);
+aspectSel.addEventListener('change', applyFilter);
+reloadBtn.addEventListener('click', boot);
+limitSel.addEventListener('change', boot);
+if (backBtn) backBtn.addEventListener('click', ()=>{
+  // Si venimos de pushState de detalle, usar back; si no, solo mostrar lista
   if (history.state && history.state.view === 'detail') history.back();
   else showList();
 });
 
-/* =================== BOOT =================== */
-async function boot(){
-  grid.innerHTML='<p class="empty">Cargando…</p>';
-  [all, statsMap] = await Promise.all([
-    fetchList(Number(limitSel.value)),
-    getStatsMap()
-  ]);
-  // Si la URL ya viene con ?pokemon=… abre el detalle; si no, listado normal
-  routeFromURL();
-}
-
-/* =================== WIRING =================== */
-q.addEventListener('input',applyFilter);
-reloadBtn.addEventListener('click',boot);
-limitSel.addEventListener('change',boot);
-formSel.addEventListener('change',applyFilter);
-aspectSel.addEventListener('change',applyFilter);
-
-// Iniciar
+/* Start */
 boot();
 
-// Lazy loading avanzado
-function lazyLoad(img, url) {
-  if (!('IntersectionObserver' in window)) {
-    // Fallback si el navegador es viejo
-    img.src = url;
-    return;
-  }
-  const observer = new IntersectionObserver((entries, obs) => {
-    entries.forEach(entry => {
-      if (entry.isIntersecting) {
-        img.src = url;
-        obs.unobserve(entry.target);
-      }
-    });
-  }, { rootMargin: "200px" }); // empieza a cargar 200px antes de aparecer
-  observer.observe(img);
-}
-
-
-
-//v1.2
+//v1.3
