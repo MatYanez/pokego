@@ -227,7 +227,7 @@ async function getStatsMap(){
 
 /* ====== Tipos en español + logo ====== */
 /* base: pokego/img/tipos/<slug>_logo.svg (sin acentos) */
-const TYPE_LOGO_BASE = '/img/tipos';
+const TYPE_LOGO_BASE = 'pokego/img/tipos';
 const TYPE_MAP = {
   normal:   { es:'Normal',    slug:'normal'    },
   fire:     { es:'Fuego',     slug:'fuego'     },
