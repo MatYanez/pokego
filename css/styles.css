@@ -126,6 +126,4 @@ dialog::backdrop{background:rgba(0,0,0,.45)}
   display:flex; gap:16px; align-items:center; flex-wrap:wrap;
   margin-bottom:12px; border-bottom:1px solid #d9dee5; padding-bottom:12px;
 }
-#detailImgWrap.shiny-wrapper::after{
-  /* reutiliza tu estrella shiny existente */
-}
+
