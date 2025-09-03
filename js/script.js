@@ -1,6 +1,5 @@
 /* =========================
-   Pokédex — JS ÚNICO
-   (Oculta el grid y muestra el detalle al hacer click)
+   Pokédex — JS ÚNICO (Grid -> Detalle in-page)
    ========================= */
 
 /* ====== Rutas de imágenes (Pokemapi) ====== */
@@ -11,7 +10,6 @@ const BASE_MEGA_SHINY = "https://pokemongo-get.com/wp-content/themes/simplicity2
 
 /* ====== Variantes especiales (mega/gigamax/primal) ====== */
 const FORM_VARIANTS = {
-  /* Kanto */
   3:[{suffix:"mega",display:"Mega Venusaur"},{suffix:"gigamax",display:"Gigamax Venusaur"}],
   6:[{suffix:"mega-x",display:"Mega Charizard X"},{suffix:"mega-y",display:"Mega Charizard Y"},{suffix:"gigamax",display:"Gigamax Charizard"}],
   9:[{suffix:"mega",display:"Mega Blastoise"},{suffix:"gigamax",display:"Gigamax Blastoise"}],
@@ -33,14 +31,12 @@ const FORM_VARIANTS = {
   142:[{suffix:"mega",display:"Mega Aerodactyl"}],
   143:[{suffix:"gigamax",display:"Gigamax Snorlax"}],
   150:[{suffix:"mega-x",display:"Mega Mewtwo X"},{suffix:"mega-y",display:"Mega Mewtwo Y"}],
-  /* Johto */
   181:[{suffix:"mega",display:"Mega Ampharos"}],
   208:[{suffix:"mega",display:"Mega Steelix"}],
   212:[{suffix:"mega",display:"Mega Scizor"}],
   214:[{suffix:"mega",display:"Mega Heracross"}],
   229:[{suffix:"mega",display:"Mega Houndoom"}],
   248:[{suffix:"mega",display:"Mega Tyranitar"}],
-  /* Hoenn */
   254:[{suffix:"mega",display:"Mega Sceptile"}],
   257:[{suffix:"mega",display:"Mega Blaziken"}],
   260:[{suffix:"mega",display:"Mega Swampert"}],
@@ -58,21 +54,16 @@ const FORM_VARIANTS = {
   362:[{suffix:"mega",display:"Mega Glalie"}],
   373:[{suffix:"mega",display:"Mega Salamence"}],
   376:[{suffix:"mega",display:"Mega Metagross"}],
-  /* Sinnoh */
   428:[{suffix:"mega",display:"Mega Lopunny"}],
   445:[{suffix:"mega",display:"Mega Garchomp"}],
   448:[{suffix:"mega",display:"Mega Lucario"}],
   460:[{suffix:"mega",display:"Mega Abomasnow"}],
   475:[{suffix:"mega",display:"Mega Gallade"}],
-  /* Unova */
   531:[{suffix:"mega",display:"Mega Audino"}],
-  /* Kalos */
   719:[{suffix:"mega",display:"Mega Diancie"}],
-  /* Primal / Rayquaza */
   382:[{suffix:"primal",display:"Primal Kyogre"}],
   383:[{suffix:"primal",display:"Primal Groudon"}],
   384:[{suffix:"mega",display:"Mega Rayquaza"}],
-  /* Gigamax */
   569:[{suffix:"gigamax",display:"Gigamax Garbodor"}],
   809:[{suffix:"gigamax",display:"Gigamax Melmetal"}],
   812:[{suffix:"gigamax",display:"Gigamax Rillaboom"}],
@@ -124,13 +115,13 @@ let all = [];
 let statsMap = new Map();       // POGO base stats por id
 window.statsMap = statsMap;     // (opcional) accesible global
 
-/* ====== Helpers UI ====== */
+/* ====== Helpers ====== */
 function capitalize(s){return s.charAt(0).toUpperCase()+s.slice(1)}
 function normalizeTerm(t){return t.trim().toLowerCase().replace(/^#/, '');}
 function typePill(t){const el=document.createElement('span');el.className='pill';el.textContent=t;return el;}
-function statRow(name,value){const row=document.createElement('div');row.className='statrow';const l=document.createElement('div');l.textContent=name;const v=document.createElement('div');const bar=document.createElement('div');bar.className='bar';const i=document.createElement('i');i.style.width=Math.min(100,(value/255)*100)+'%';bar.appendChild(i);v.appendChild(bar);row.appendChild(l);row.appendChild(v);return row;}
+function statRow(n,v){const r=document.createElement('div');r.className='statrow';const l=document.createElement('div');l.textContent=n;const vv=document.createElement('div');const b=document.createElement('div');b.className='bar';const i=document.createElement('i');i.style.width=Math.min(100,(v/255)*100)+'%';b.appendChild(i);vv.appendChild(b);r.appendChild(l);r.appendChild(vv);return r;}
 
-/* ====== LazyLoad (IntersectionObserver) ====== */
+/* LazyLoad robusto */
 function lazyLoad(img, url) {
   if (!url) return;
   if (!('IntersectionObserver' in window)) { img.src = url; return; }
@@ -197,11 +188,8 @@ async function fetchList(limit){
 
   const all = [];
   for (const p of base){
-    // Base normal + shiny
     all.push(p);
     all.push({ ...p, idVirtual: `${p.id}-s`, displayName: `${p.displayName} Shiny`, form:"shiny" });
-
-    // Variantes y sus shiny
     const variants = FORM_VARIANTS[p.id] || [];
     variants.forEach((v, i) => {
       all.push({ ...p, idVirtual: `${p.id}-v${i+1}`,   displayName: v.display,            form: v.suffix });
@@ -210,7 +198,6 @@ async function fetchList(limit){
   }
   return all;
 }
-
 async function fetchOne(id){
   const res = await fetch(`https://pokeapi.co/api/v2/pokemon/${id}`);
   const p = await res.json();
@@ -237,9 +224,7 @@ async function getStatsMap(){
     if(!res.ok) return new Map();
     const rows=await res.json();
     return new Map(rows.map(r=>[+r.pokemon_id,{attack:+r.base_attack,defense:+r.base_defense,stamina:+r.base_stamina}]));
-  }catch(e){
-    return new Map();
-  }
+  }catch{ return new Map(); }
 }
 
 /* ====== Filtros ====== */
@@ -250,11 +235,12 @@ function isFormKind(p, kind){
   return p.form.startsWith(kind); // mega | gigamax | primal
 }
 
-/* ====== Cards ====== */
+/* ====== Construcción de cards ====== */
 function buildCard(p){
   const card=document.createElement('div');
   card.className='card';
-  card.setAttribute('data-id', String(p.id));
+  card.dataset.id = String(p.id);
+  card.dataset.form = p.form;
 
   const imgWrap=document.createElement('div');
   if(p.form.includes("shiny")) imgWrap.classList.add('shiny-wrapper');
@@ -263,7 +249,6 @@ function buildCard(p){
   img.className='sprite';
   img.alt=p.displayName;
   img.loading='lazy';
-
   resolveSpriteURL(p.id,p.form).then(url => lazyLoad(img, url));
   imgWrap.appendChild(img);
   card.appendChild(imgWrap);
@@ -277,42 +262,22 @@ function buildCard(p){
   if (st){
     const pcp=document.createElement('p');
     pcp.className='cp-max-100-l20';
-    pcp.style.margin='0 0 6px';
-    pcp.style.fontSize='13px';
-    pcp.style.fontWeight='700';
-    pcp.style.textAlign='center';
+    pcp.style.margin='0 0 6px'; pcp.style.fontSize='13px'; pcp.style.fontWeight='700'; pcp.style.textAlign='center';
     pcp.textContent = 'Máx PC ' + computeCPMaxLevel20(st.attack, st.defense, st.stamina);
     card.insertBefore(pcp, card.firstChild);
   }
 
-  // Click -> abrir detalle y ocultar todo el grid
-  card.addEventListener('click', ()=>{
-    openDetail({ id:p.id, form:p.form });
-  });
-
   return card;
 }
 
-/* Anotar CP en cards ya renderizadas cuando llega statsMap */
-function annotateCardsCP(){
-  if (!statsMap.size) return;
-  grid.querySelectorAll('.card').forEach(card=>{
-    if (card.querySelector('.cp-max-100-l20')) return;
-    const dexEl = card.querySelector('.dex');
-    const m = dexEl?.textContent.match(/#0*(\d+)/);
-    const id = m ? +m[1] : null;
-    if (!id) return;
-    const st = statsMap.get(id); if(!st) return;
-    const pcp=document.createElement('p');
-    pcp.className='cp-max-100-l20';
-    pcp.style.margin='0 0 6px';
-    pcp.style.fontSize='13px';
-    pcp.style.fontWeight='700';
-    pcp.style.textAlign='center';
-    pcp.textContent = 'Máx PC ' + computeCPMaxLevel20(st.attack, st.defense, st.stamina);
-    card.insertBefore(pcp, card.firstChild);
-  });
-}
+/* Delegación de eventos (garantiza que el click funcione siempre) */
+grid.addEventListener('click', (ev)=>{
+  const card = ev.target.closest('.card');
+  if (!card) return;
+  const id = Number(card.dataset.id);
+  const form = card.dataset.form || 'normal';
+  openDetail({ id, form });
+});
 
 /* ====== Render ====== */
 function render(list){
@@ -322,8 +287,6 @@ function render(list){
   const frag=document.createDocumentFragment();
   for(const p of list){ frag.appendChild(buildCard(p)); }
   grid.appendChild(frag);
-  // Si ya tenemos stats, anotar CP
-  annotateCardsCP();
 }
 
 function applyFilter(){
@@ -350,20 +313,24 @@ function applyFilter(){
   render(filtered);
 }
 
-/* ====== Vista de Detalle (pantalla completa dentro de la misma página) ====== */
-async function openDetail({ id, form='normal' }){
-  // Ocultar listado + controles, mostrar detalle
-  grid.hidden = true;
+/* ====== Vista de Detalle ====== */
+function setView(mode){
+  const detail = (mode === 'detail');
+  detailView.hidden = !detail;
+  grid.hidden = detail;               // <- oculta las cards al abrir detalle
   empty.hidden = true;
-  if (controls) controls.hidden = true;
-  detailView.hidden = false;
-  document.body.classList.add('detail-mode'); // si tu CSS la usa para ocultar header
+  if (controls) controls.hidden = detail;
+}
 
-  // Actualizar URL (para soportar Atrás)
+async function openDetail({ id, form='normal' }){
+  // Cambia vista primero (evita ver "Cargando…" del grid)
+  setView('detail');
+
+  // Actualiza URL (para soporte de Atrás)
   const params = new URLSearchParams({ pokemon:String(id), form });
   history.pushState({ view:'detail', id, form }, '', `?${params.toString()}`);
 
-  // Limpiar detalle
+  // Limpia UI de detalle
   detailTitle.textContent = 'Cargando…';
   detailSprite.removeAttribute('src');
   detailImgWrap.classList.toggle('shiny-wrapper', form.includes('shiny'));
@@ -372,10 +339,9 @@ async function openDetail({ id, form='normal' }){
   detailStats.innerHTML = '';
   detailCP.textContent = '';
 
-  // Datos + sprite
+  // Carga datos + sprite
   const data = await fetchOne(id);
   detailTitle.textContent = data.displayName;
-
   resolveSpriteURL(id, form).then(url => lazyLoad(detailSprite, url));
   data.types.forEach(t => detailTypes.appendChild(typePill(t)));
   detailMeta.textContent = `Altura: ${data.height/10} m · Peso: ${data.weight/10} kg`;
@@ -390,13 +356,8 @@ async function openDetail({ id, form='normal' }){
 }
 
 function showList(){
-  // Mostrar listado y controles; ocultar detalle
-  detailView.hidden = true;
-  grid.hidden = false;
-  if (controls) controls.hidden = false;
-  document.body.classList.remove('detail-mode');
-
-  // Limpiar parámetros de la URL
+  setView('list');
+  // Limpia parámetros de la URL
   if (location.search.includes('pokemon=')) {
     history.pushState({ view:'list' }, '', location.pathname);
   }
@@ -417,20 +378,22 @@ window.addEventListener('popstate', routeFromURL);
 
 /* ====== Boot ====== */
 async function boot(){
-  grid.innerHTML = '<p class="empty">Cargando…</p>';
+  // Si la URL ya pide detalle, oculta el grid ANTES de poner "Cargando…" en el grid
+  const wantsDetail = new URLSearchParams(location.search).has('pokemon');
+  if (wantsDetail) setView('detail'); else grid.innerHTML = '<p class="empty">Cargando…</p>';
+
   const [list, smap] = await Promise.all([
     fetchList(Number(limitSel.value)),
     getStatsMap()
   ]);
   all = list;
   statsMap = smap;
-  window.statsMap = statsMap; // actualizar global
+  window.statsMap = statsMap;
 
-  // Si la URL ya pide un detalle, abrirlo; si no, listar y aplicar filtros
-  if (location.search.includes('pokemon=')) {
-    routeFromURL();
+  if (wantsDetail) {
+    routeFromURL();   // abre el detalle solicitado en la URL
   } else {
-    applyFilter(); // render inicial con filtros actuales (búsqueda, formas, aspecto)
+    applyFilter();    // render inicial de la lista
   }
 }
 
@@ -440,8 +403,8 @@ formSel.addEventListener('change', applyFilter);
 aspectSel.addEventListener('change', applyFilter);
 reloadBtn.addEventListener('click', boot);
 limitSel.addEventListener('change', boot);
+
 if (backBtn) backBtn.addEventListener('click', ()=>{
-  // Si venimos de pushState de detalle, usar back; si no, solo mostrar lista
   if (history.state && history.state.view === 'detail') history.back();
   else showList();
 });
@@ -449,4 +412,5 @@ if (backBtn) backBtn.addEventListener('click', ()=>{
 /* Start */
 boot();
 
-//v1.3
+
+//v1.5a
