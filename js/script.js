@@ -1,5 +1,6 @@
 /* =========================
    Pokédex — JS ÚNICO (Grid -> Detalle in-page)
+   Tipos en español + logo (carpeta: pokego/img/tipos)
    ========================= */
 
 /* ====== Rutas de imágenes (Pokemapi) ====== */
@@ -118,19 +119,15 @@ window.statsMap = statsMap;     // (opcional) accesible global
 /* ====== Helpers ====== */
 function capitalize(s){return s.charAt(0).toUpperCase()+s.slice(1)}
 function normalizeTerm(t){return t.trim().toLowerCase().replace(/^#/, '');}
-function typePill(t){const el=document.createElement('span');el.className='pill';el.textContent=t;return el;}
 function statRow(n,v){const r=document.createElement('div');r.className='statrow';const l=document.createElement('div');l.textContent=n;const vv=document.createElement('div');const b=document.createElement('div');b.className='bar';const i=document.createElement('i');i.style.width=Math.min(100,(v/255)*100)+'%';b.appendChild(i);vv.appendChild(b);r.appendChild(l);r.appendChild(vv);return r;}
 
-/* LazyLoad robusto */
+/* ====== LazyLoad robusto ====== */
 function lazyLoad(img, url) {
   if (!url) return;
   if (!('IntersectionObserver' in window)) { img.src = url; return; }
   const io = new IntersectionObserver((entries, obs)=>{
     entries.forEach(e=>{
-      if (e.isIntersecting) {
-        img.src = url;
-        obs.unobserve(e.target);
-      }
+      if (e.isIntersecting) { img.src = url; obs.unobserve(e.target); }
     });
   }, { rootMargin: '200px' });
   io.observe(img);
@@ -206,6 +203,7 @@ async function fetchOne(id){
     displayName:capitalize(p.name),
     height:p.height,
     weight:p.weight,
+    // mantenemos los nombres internos en inglés (clave) para mapear a ES
     types:p.types.map(t=>t.type.name),
     stats:p.stats.map(s=>({name:s.stat.name,base:s.base_stat}))
   };
@@ -225,6 +223,59 @@ async function getStatsMap(){
     const rows=await res.json();
     return new Map(rows.map(r=>[+r.pokemon_id,{attack:+r.base_attack,defense:+r.base_defense,stamina:+r.base_stamina}]));
   }catch{ return new Map(); }
+}
+
+/* ====== Tipos en español + logo ====== */
+/* base: pokego/img/tipos/<slug>_logo.svg (sin acentos) */
+const TYPE_LOGO_BASE = 'pokego/img/tipos';
+const TYPE_MAP = {
+  normal:   { es:'Normal',    slug:'normal'    },
+  fire:     { es:'Fuego',     slug:'fuego'     },
+  water:    { es:'Agua',      slug:'agua'      },
+  electric: { es:'Eléctrico', slug:'electrico' },
+  grass:    { es:'Planta',    slug:'planta'    },
+  ice:      { es:'Hielo',     slug:'hielo'     },
+  fighting: { es:'Lucha',     slug:'lucha'     },
+  poison:   { es:'Veneno',    slug:'veneno'    },
+  ground:   { es:'Tierra',    slug:'tierra'    },
+  flying:   { es:'Volador',   slug:'volador'   },
+  psychic:  { es:'Psíquico',  slug:'psiquico'  },
+  bug:      { es:'Bicho',     slug:'bicho'     },
+  rock:     { es:'Roca',      slug:'roca'      },
+  ghost:    { es:'Fantasma',  slug:'fantasma'  },
+  dragon:   { es:'Dragón',    slug:'dragon'    },
+  dark:     { es:'Siniestro', slug:'siniestro' },
+  steel:    { es:'Acero',     slug:'acero'     },
+  fairy:    { es:'Hada',      slug:'hada'      },
+  // PokeAPI a veces usa estos:
+  shadow:   { es:'Sombra',    slug:'normal'    },
+  unknown:  { es:'Desconocido',slug:'normal'   },
+};
+
+/* Chip con logo + texto en ES (mayúscula inicial + acentos) */
+function typePill(typeEn){
+  const k = String(typeEn).toLowerCase();
+  const m = TYPE_MAP[k] || { es: capitalize(k), slug:'normal' };
+  const span = document.createElement('span');
+  span.className = 'pill type-pill';
+  // estilos inline para evitar CSS extra
+  span.style.display = 'inline-flex';
+  span.style.alignItems = 'center';
+  span.style.gap = '6px';
+
+  const img = document.createElement('img');
+  img.src = `${TYPE_LOGO_BASE}/${m.slug}_logo.svg`;
+  img.alt = `Tipo: ${m.es}`;
+  img.width = 18; img.height = 18;
+  img.loading = 'lazy';
+  img.style.display = 'block';
+
+  const txt = document.createElement('span');
+  txt.textContent = m.es;
+
+  span.appendChild(img);
+  span.appendChild(txt);
+  return span;
 }
 
 /* ====== Filtros ====== */
@@ -270,7 +321,7 @@ function buildCard(p){
   return card;
 }
 
-/* Delegación de eventos (garantiza que el click funcione siempre) */
+/* Delegación de eventos: click en cualquier card */
 grid.addEventListener('click', (ev)=>{
   const card = ev.target.closest('.card');
   if (!card) return;
@@ -343,7 +394,10 @@ async function openDetail({ id, form='normal' }){
   const data = await fetchOne(id);
   detailTitle.textContent = data.displayName;
   resolveSpriteURL(id, form).then(url => lazyLoad(detailSprite, url));
-  data.types.forEach(t => detailTypes.appendChild(typePill(t)));
+
+  // TIPOS en español con logo
+  data.types.forEach(tEn => detailTypes.appendChild(typePill(tEn)));
+
   detailMeta.textContent = `Altura: ${data.height/10} m · Peso: ${data.weight/10} kg`;
   data.stats.forEach(s => detailStats.appendChild(statRow(s.name, s.base)));
 
@@ -413,4 +467,5 @@ if (backBtn) backBtn.addEventListener('click', ()=>{
 boot();
 
 
-//v1.5a
+
+//v1.6
