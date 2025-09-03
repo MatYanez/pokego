@@ -9,56 +9,59 @@
 </head>
 <body>
 <header>
-<div class="wrap">
-<h1>Pokédex — Pokemapi (Normal/Shiny + Mega/Gigamax/Primal)</h1>
-<div class="controls">
-<input id="q" type="search" placeholder="Buscar por nombre o # (ej. 5, charmeleon, mega, gigamax)" />
-<select id="limit">
-<option value="151">Kanto</option>
-<option value="251">Johto</option>
-<option value="386">Hoenn</option>
-<option value="493">Sinnoh</option>
-<option value="649">Teselia</option>
-<option value="721">Kalos</option>
-<option value="809">Alola</option>
-<option value="905">Hisui</option>
-<option value="1025" selected>Paldea</option>
-</select>
-<!-- Tipo de forma -->
-<select id="formFilter">
-<option value="all" selected>Todos</option>
-<option value="normal">Normal</option>
-<option value="mega">Mega</option>
-<option value="gigamax">Gigamax</option>
-<option value="primal">Primal</option>
-</select>
-<!-- Aspecto -->
-<select id="aspectFilter">
-<option value="normal" selected>Aspecto: Normal</option>
-<option value="shiny">Aspecto: Shiny</option>
-</select>
-<button id="reload">Cargar</button>
-</div>
-</div>
+  <div class="wrap">
+    <h1>Pokédex — Pokemapi (Normal/Shiny + Mega/Gigamax/Primal)</h1>
+    <div class="controls">
+      <input id="q" type="search" placeholder="Buscar por nombre o # (ej. 5, charmeleon, mega, gigamax)" />
+      <select id="limit">
+        <option value="151">Kanto</option>
+        <option value="251">Johto</option>
+        <option value="386">Hoenn</option>
+        <option value="493">Sinnoh</option>
+        <option value="649">Teselia</option>
+        <option value="721">Kalos</option>
+        <option value="809">Alola</option>
+        <option value="905">Hisui</option>
+        <option value="1025" selected>Paldea</option>
+      </select>
+      <select id="formFilter">
+        <option value="all" selected>Todos</option>
+        <option value="normal">Normal</option>
+        <option value="mega">Mega</option>
+        <option value="gigamax">Gigamax</option>
+        <option value="primal">Primal</option>
+      </select>
+      <select id="aspectFilter">
+        <option value="normal" selected>Aspecto: Normal</option>
+        <option value="shiny">Aspecto: Shiny</option>
+      </select>
+      <button id="reload">Cargar</button>
+    </div>
+  </div>
 </header>
+
 <main class="wrap">
-<div id="grid" class="grid"></div>
-<p id="empty" class="empty" hidden>Sin resultados.</p>
+  <!-- Vista de LISTA -->
+  <div id="grid" class="grid"></div>
+  <p id="empty" class="empty" hidden>Sin resultados.</p>
+
+  <!-- Vista de DETALLE (nueva) -->
+  <section id="detailView" hidden>
+    <button id="backBtn" class="back">← Volver</button>
+    <div id="detailHead" class="detail-head">
+      <div id="detailImgWrap"><img id="detailSprite" class="sprite" alt=""></div>
+      <div>
+        <h2 id="detailTitle" class="name"></h2>
+        <div id="detailTypes"></div>
+        <div id="detailMeta" class="dex"></div>
+        <div id="detailCP" class="cp-max-100-l20"></div>
+      </div>
+    </div>
+    <div id="detailStats"></div>
+  </section>
 </main>
-<dialog id="dlg">
-<header>
-<h2 id="dlgTitle">Detalle</h2>
-<button class="x" onclick="dlg.close()">Cerrar</button>
-                                                                                                                                                                                                                                  </header>
-<div class="modal">
-<div id="dlgImgWrap"><img id="dlgSprite" class="sprite" alt=""></div>
-<div id="dlgTypes"></div>
-<div id="dlgMeta"></div>
-<div id="dlgStats"></div>
-</div>
-</dialog>
 
- <script defer src="js/script.js"></script>
-
+<!-- JS único -->
+<script defer src="js/script.js"></script>
 </body>
 </html>
